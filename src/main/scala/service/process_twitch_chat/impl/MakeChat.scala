@@ -12,8 +12,9 @@ import sttp.client3.*
 import sttp.ws.WebSocketFrame
 import sttp.ws.WebSocketFrame.*
 
-import service.read_access_info.ReadAccessInfo
+import service.http_client.HttpClient
 import service.process_twitch_chat.*
+import service.read_access_info.ReadAccessInfo
 
 import model.*
 import model.Auth.*
@@ -59,15 +60,10 @@ def processFrames(f: ProcessIncoming): Pipe[WebSocketFrame, WebSocketFrame] =
     case other         => printIgnore(other)
   }
 
-def makeChatter(f: ProcessIncoming)
-    : RIO[SttpBackend[Task, WebSockets & ZioStreams] & ReadAccessInfo, Response[Unit]] =
+def makeChatter(f: ProcessIncoming): RIO[HttpClient & ReadAccessInfo, Response[Either[String, Unit]]] =
+  val uri = uri"ws://irc-ws.chat.twitch.tv:80"
   for
     info <- ZIO.environment[ReadAccessInfo]
-    auth    = authStream.provideEnvironment(info)
-    request = basicRequest
-      .get(uri"ws://irc-ws.chat.twitch.tv:80")
-      .response(asWebSocketStreamAlways(ZioStreams) {
-        auth ++ _.viaFunction(processFrames(f))
-      })
-    response <- request.sendZIO
+    auth = authStream.provideEnvironment(info)
+    response <- HttpClient.websocket(uri, auth ++ _.viaFunction(processFrames(f)))
   yield response

@@ -10,8 +10,9 @@ import sttp.capabilities.WebSockets
 import sttp.client3.*
 import sttp.client3.httpclient.zio.HttpClientZioBackend
 
-import service.read_access_info.ReadAccessInfo
+import service.http_client.HttpClient
 import service.process_twitch_chat.TwitchChat
+import service.read_access_info.ReadAccessInfo
 
 import model.*
 import model.AuxTypes.*
@@ -35,7 +36,7 @@ object Main extends ZIOAppDefault:
 
   val path: Path = Paths.get("tokens.txt")
 
-  val runChat: RIO[TwitchChat, Response[Unit]] =
+  val runChat: RIO[TwitchChat, Response[Either[String, Unit]]] =
     TwitchChat.process {
       case Incoming.PRIVMSG(tags, from, channel, message) =>
         val bits =
@@ -68,8 +69,9 @@ object Main extends ZIOAppDefault:
   val environment =
     ZLayer.make[TwitchChat](
       TwitchChat.layer,
-      HttpClientZioBackend.layer(),
+      HttpClient.layer,
       ReadAccessInfo.makeLayer(info, path),
+      HttpClientZioBackend.layer(),
       Scope.default)
 
   val run = runChat.provide(environment)

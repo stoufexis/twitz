@@ -7,24 +7,24 @@ import sttp.capabilities.WebSockets
 import sttp.capabilities.zio.ZioStreams
 import sttp.client3.*
 
+import service.http_client.HttpClient
+import service.process_twitch_chat.impl.*
 import service.read_access_info.ReadAccessInfo
 
 import model.*
 
 import common.*
 
-import service.process_twitch_chat.impl.*
-
 type ProcessIncoming = Incoming => Stream[Throwable, Outgoing]
 
 trait TwitchChat:
-  def process(f: ProcessIncoming): Task[Response[Unit]]
+  def process(f: ProcessIncoming): Task[Response[Either[String, Unit]]]
 
 object TwitchChat:
-  def process(f: ProcessIncoming): RIO[TwitchChat, Response[Unit]] =
+  def process(f: ProcessIncoming): RIO[TwitchChat, Response[Either[String, Unit]]] =
     ZIO.serviceWithZIO(_.process(f))
 
-  val layer: URLayer[SttpBackend[Task, WebSockets & ZioStreams] & ReadAccessInfo, TwitchChat] =
+  val layer: URLayer[HttpClient & ReadAccessInfo, TwitchChat] =
     ZLayer.fromFunctionEnvironment { env =>
       new TwitchChat:
         def process(f: ProcessIncoming) = makeChatter(f).provideEnvironment(env)

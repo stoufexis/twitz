@@ -9,6 +9,8 @@ import cats.syntax.all.*
 import sttp.client3.*
 import sttp.client3.circe.*
 
+import service.http_client.*
+
 import model.AccessInfo
 import model.AuxTypes.{AccessToken, RefreshToken}
 
@@ -28,7 +30,7 @@ case class RefreshResponse(
     token_type: String)
     derives Decoder
 
-def updateInfo(info: AccessInfo): RIO[SttpBackend[Task, Any], AccessInfo] =
+def updateInfo(info: AccessInfo): RIO[HttpClient, AccessInfo] =
   val AccessInfo(_, refreshToken, clientId, clientSecret, _) = info
 
   val body = s"grant_type=refresh_token" +
@@ -43,7 +45,7 @@ def updateInfo(info: AccessInfo): RIO[SttpBackend[Task, Any], AccessInfo] =
     .response(asJson[RefreshResponse])
 
   for
-    response <- request.sendZIO
+    response <- HttpClient.simpleRequest[RefreshResponse](request)
     body     <- ZIO.fromEither(response.body)
   yield info.copy(refreshToken = body.refresh_token, accessToken = body.access_token)
 
@@ -63,7 +65,7 @@ def getSavedInfo(path: Path): RIO[Scope, Option[(RefreshToken, AccessToken)]] =
 def writeTokens(path: Path, refreshToken: RefreshToken, accessToken: AccessToken): ZIO[Scope, IOException, Unit] =
   ZIO.writeFile(path, refreshToken.unwrap + " " + accessToken.unwrap)
 
-def updateSavedInfo(initial: AccessInfo, path: Path): RIO[Scope & SttpBackend[Task, Any], AccessInfo] =
+def updateSavedInfo(initial: AccessInfo, path: Path): RIO[Scope & HttpClient, AccessInfo] =
   for
     oldInfo <- getSavedInfo(path).map {
       case Some((refresh, access)) => initial.copy(refreshToken = refresh, accessToken = access)
