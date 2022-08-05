@@ -30,8 +30,8 @@ object HttpClient:
     ZIO.serviceWithZIO(_.simpleRequest(request))
 
   val layer: URLayer[SttpBackend[Task, WebSockets & ZioStreams], HttpClient] =
-    ZLayer.fromFunctionEnvironment { (backend: ZEnvironment[WSBackend]) =>
-      new HttpClient:
+    ZLayer.fromFunctionEnvironment { backend =>
+      new:
         def websocket(uri: Uri, f: WSFunction): Task[Response[WSResult]] =
           basicRequest
             .get(uri)

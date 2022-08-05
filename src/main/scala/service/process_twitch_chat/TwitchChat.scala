@@ -26,6 +26,6 @@ object TwitchChat:
 
   val layer: URLayer[HttpClient & ReadAccessInfo, TwitchChat] =
     ZLayer.fromFunctionEnvironment { env =>
-      new TwitchChat:
+      new:
         def process(f: ProcessIncoming) = makeChatter(f).provideEnvironment(env)
     }

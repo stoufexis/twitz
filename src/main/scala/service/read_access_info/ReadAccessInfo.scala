@@ -24,12 +24,12 @@ object ReadAccessInfo:
 
   def makeLayer(initial: AccessInfo, savePath: Path): URLayer[Scope & HttpClient, ReadAccessInfo] =
     ZLayer.fromFunctionEnvironment { env =>
-      new ReadAccessInfo:
+      new:
         def get = updateSavedInfo(initial, savePath).provideEnvironment(env)
     }
 
   def makeNonFSLayer(initial: AccessInfo): URLayer[HttpClient, ReadAccessInfo] =
     ZLayer.fromFunctionEnvironment { backend =>
-      new ReadAccessInfo:
+      new:
         def get = updateInfo(initial).provideEnvironment(backend)
     }
