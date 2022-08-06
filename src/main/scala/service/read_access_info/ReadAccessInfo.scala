@@ -33,3 +33,9 @@ object ReadAccessInfo:
       new:
         def get = updateInfo(initial).provideEnvironment(backend)
     }
+
+  def mockLayer(info: AccessInfo): ULayer[ReadAccessInfo] =
+    ZLayer.succeed {
+      new:
+        def get = ZLayer.succeed(info)
+    }

@@ -7,15 +7,23 @@ import model.NoticeType.*
 import model.Tags.*
 
 import type_classes.Read
+import type_classes.Read.read
 import type_classes.Unwrap.unwrap
 import type_classes.instances.unwrap.given
 
 extension (privmsgTags: PrivmsgTags)
   def getBits: Option[Int] =
-    privmsgTags.unwrap.get("bits") map Read[Int].read flatMap (_.toOption)
+    privmsgTags
+      .unwrap
+      .get("bits")
+      .map(read[Int])
+      .flatMap(_.toOption)
 
   def getId: Option[MessageId] =
-    privmsgTags.unwrap.get("id") map MessageId.apply
+    privmsgTags
+      .unwrap
+      .get("id")
+      .map(MessageId(_))
 
 extension (userNoticeTags: UserNoticeTags)
   @targetName("userNoticeTagsGetType")

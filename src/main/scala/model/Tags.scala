@@ -18,6 +18,9 @@ object Tags:
   opaque type UserStateTags       = Map[String, String]
   opaque type WhisperTags         = Map[String, String]
 
+//  object PrivmsgTags:
+//    def unapply
+
   private val tagsToMap: String => Map[String, String] =
     _.split(";").flatMap {
       _.splitList("=") match

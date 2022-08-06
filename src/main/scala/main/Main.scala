@@ -3,8 +3,8 @@ package main
 import zio.*
 import zio.stream.*
 
-import cats.Show
 import cats.syntax.all.*
+import cats.{SemigroupK, Show}
 
 import sttp.capabilities.WebSockets
 import sttp.client3.*
@@ -38,19 +38,18 @@ object Main extends ZIOAppDefault:
 
   val runChat: RIO[TwitchChat, Response[Either[String, Unit]]] =
     TwitchChat.process {
-      case Incoming.PRIVMSG(tags, from, channel, message) =>
-        val bits =
-          for
-            bits <- tags.getBits
-            message = Message(show"Thank you $from for $bits bits")
-          yield Outgoing.PRIVMSG(None, channel, message)
+      case Incoming.PRIVMSG(tags, from, channel, inMessage) =>
+        tags.getBits match
+          case Some(value) =>
+            val message = Message(show"Thank you $from for $value bits")
+            ZStream(Outgoing.PRIVMSG(tags.getId, channel, message))
 
-        val command =
-          message.show match
-            case "!Hey" => Some(Outgoing.PRIVMSG(tags.getId, channel, Message("ho")))
-            case _      => None
-
-        ZStream fromOption bits <+> command
+          case None =>
+            val message = inMessage.show match
+              case "!Hey" => ZStream("ho")
+              case _      => ZStream.empty
+            message
+              .map(msg => Outgoing.PRIVMSG(tags.getId, channel, Message(msg)))
 
       case Incoming.PING(body)                                   => ZStream.empty
       case Incoming.ROOMSTATE(tags, channel)                     => ZStream.empty

@@ -13,7 +13,6 @@ import sttp.ws.WebSocketFrame
 import common.*
 
 type WSFunction       = ZStream[Any, Throwable, WebSocketFrame] => ZStream[Any, Throwable, WebSocketFrame]
-type WSBackend        = SttpBackend[Task, WebSockets & ZioStreams]
 type RequestResult[T] = Either[ResponseException[String, Error], T]
 type WSResult         = Either[String, Unit]
 
@@ -43,4 +42,22 @@ object HttpClient:
           request
             .sendZIO
             .provideEnvironment(backend)
+    }
+
+  def mockLayer(
+      wsInput: List[WebSocketFrame],
+      wsOutput: Ref[List[WebSocketFrame]],
+      fRequest: Request[RequestResult[T], Any] => Task[Response[RequestResult[T]]]): ULayer[HttpClient] =
+    ZLayer.succeed {
+      new HttpClient:
+        def websocket(uri: Uri, f: WSFunction): Task[Response[WSResult]] =
+          ZStream
+            .fromIterable(wsInput)
+            .viaFunction(f)
+            .runFold[List[WebSocketFrame]](Nil)(_ :+ _)
+            .flatMap(wsOutput.set(_)) *>
+            ZIO.succeed(Response(Right(()), StatusCode.Ok))
+
+      def simpleRequest[T](request: Request[RequestResult[T], Any]): Task[Response[RequestResult[T]]] =
+        fRequest(request)
     }
