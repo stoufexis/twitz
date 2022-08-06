@@ -15,8 +15,6 @@ import scala.compiletime.ops.int.*
 import scala.deriving.Mirror
 import scala.util.matching.Regex
 
-import type_classes.Unwrap
-
 def printStream[A: Show](a: A): ZStream[Any, Throwable, Unit] =
   ZStream.execute(Console.printLine(Show[A].show(a)))
 
@@ -30,6 +28,10 @@ extension (s: String)
 def matchEither[A](regex: Regex, f: String => A): String => Either[String, A] =
   case regex(str) => Right(f(str))
   case s          => Left(s)
+
+def matchOption(regex: Regex): String => Option[String] =
+  case regex(str) => Some(str)
+  case _          => None
 
 extension (_s: ZStream.type)
   def fromOption[A]: Option[A] => ZStream[Any, Nothing, A] =
@@ -49,4 +51,3 @@ extension [T, R](request: Request[T, R])
 
 def toFrame[A: Show](a: A): WebSocketFrame =
   WebSocketFrame.text(Show[A].show(a))
-

@@ -6,29 +6,25 @@ import model.AuxTypes.MessageId
 import model.NoticeType.*
 import model.Tags.*
 
-import type_classes.Read
-import type_classes.Read.read
-import type_classes.Unwrap.unwrap
-import type_classes.instances.unwrap.given
 
 extension (privmsgTags: PrivmsgTags)
   def getBits: Option[Int] =
-    privmsgTags
-      .unwrap
+    val PrivmsgTags(tags) = privmsgTags
+    tags
       .get("bits")
-      .map(read[Int])
-      .flatMap(_.toOption)
+      .flatMap(_.toIntOption)
 
   def getId: Option[MessageId] =
-    privmsgTags
-      .unwrap
+    val PrivmsgTags(tags) = privmsgTags
+    tags
       .get("id")
       .map(MessageId(_))
 
 extension (userNoticeTags: UserNoticeTags)
   @targetName("userNoticeTagsGetType")
   def getType: Option[UserNoticeType] =
-    userNoticeTags.unwrap.get("msg-id").flatMap {
+    val UserNoticeTags(tags) = userNoticeTags
+    tags.get("msg-id").flatMap {
       case "sub"                 => Some(UserNoticeType.SUB)
       case "resub"               => Some(UserNoticeType.RESUB)
       case "subgift"             => Some(UserNoticeType.SUBGIFT)
@@ -43,12 +39,14 @@ extension (userNoticeTags: UserNoticeTags)
     }
 
   def getLogin: Option[String] =
-    userNoticeTags.unwrap.get("login")
+    val UserNoticeTags(tags) = userNoticeTags
+    tags.get("login")
 
 extension (noticeTags: NoticeTags)
   @targetName("noticeTagsGetType")
   def getType: Option[NoticeType] =
-    noticeTags.unwrap.get("msg-id").flatMap {
+    val NoticeTags(tags) = noticeTags
+    tags.get("msg-id").flatMap {
       case "already_banned"                     => Some(ALREADY_BANNED)
       case "already_emote_only_off"             => Some(ALREADY_EMOTE_ONLY_OFF)
       case "already_emote_only_on"              => Some(ALREADY_EMOTE_ONLY_ON)

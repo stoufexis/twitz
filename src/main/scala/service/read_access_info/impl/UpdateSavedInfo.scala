@@ -16,9 +16,7 @@ import model.AuxTypes.{AccessToken, RefreshToken}
 
 import common.*
 
-import type_classes.Unwrap.unwrap
 import type_classes.instances.decoder.given
-import type_classes.instances.unwrap.given
 
 import java.io.{FileNotFoundException, IOException}
 import java.nio.file.Path
@@ -63,7 +61,8 @@ def getSavedInfo(path: Path): RIO[Scope, Option[(RefreshToken, AccessToken)]] =
   yield out
 
 def writeTokens(path: Path, refreshToken: RefreshToken, accessToken: AccessToken): ZIO[Scope, IOException, Unit] =
-  ZIO.writeFile(path, refreshToken.unwrap + " " + accessToken.unwrap)
+  val (RefreshToken(refresh), AccessToken(access)) = (refreshToken, accessToken)
+  ZIO.writeFile(path, refresh + " " + access)
 
 def updateSavedInfo(initial: AccessInfo, path: Path): RIO[Scope & HttpClient, AccessInfo] =
   for

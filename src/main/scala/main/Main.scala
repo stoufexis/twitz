@@ -20,8 +20,6 @@ import model.Tags.*
 
 import common.*
 
-import type_classes.instances.show.given
-
 import java.io.FileNotFoundException
 import java.nio.file.{Path, Paths}
 
@@ -41,13 +39,14 @@ object Main extends ZIOAppDefault:
       case Incoming.PRIVMSG(tags, from, channel, inMessage) =>
         tags.getBits match
           case Some(value) =>
-            val message = Message(show"Thank you $from for $value bits")
+            val FullUser(user) = from
+            val message        = Message(show"Thank you $user for $value bits")
             ZStream(Outgoing.PRIVMSG(tags.getId, channel, message))
 
           case None =>
-            val message = inMessage.show match
-              case "!Hey" => ZStream("ho")
-              case _      => ZStream.empty
+            val message = inMessage match
+              case Message("!Hey") => ZStream("ho")
+              case _               => ZStream.empty
             message
               .map(msg => Outgoing.PRIVMSG(tags.getId, channel, Message(msg)))
 

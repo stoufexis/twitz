@@ -37,5 +37,5 @@ object ReadAccessInfo:
   def mockLayer(info: AccessInfo): ULayer[ReadAccessInfo] =
     ZLayer.succeed {
       new:
-        def get = ZLayer.succeed(info)
+        def get = ZIO.succeed(info)
     }

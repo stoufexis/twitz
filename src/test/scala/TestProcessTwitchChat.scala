@@ -1,16 +1,16 @@
 import zio.*
 import zio.stream.*
 import zio.test.*
+import zio.{Task, *}
 
 import cats.Show
 import cats.syntax.all.*
 
 import sttp.capabilities.*
 import sttp.capabilities.WebSockets
-import sttp.capabilities.zio.*
-import sttp.client3.*
 import sttp.client3.httpclient.zio.HttpClientZioBackend
 import sttp.client3.testing.*
+import sttp.client3.{Request, *}
 import sttp.model.*
 import sttp.monad.MonadError
 import sttp.ws.*
@@ -26,8 +26,6 @@ import model.Tags.*
 
 import common.*
 
-import type_classes.instances.show.given
-
 import java.io.FileNotFoundException
 import java.nio.file.{Path, Paths}
 
@@ -41,16 +39,16 @@ val info = AccessInfo(
 
 val runChat =
   TwitchChat.process {
-    case Incoming.PRIVMSG(tags, from, channel, inMessage) =>
+    case Incoming.PRIVMSG(tags, FullUser(from), channel, inMessage) =>
       tags.getBits match
         case Some(value) =>
           val message = Message(show"Thank you $from for $value bits")
           ZStream(Outgoing.PRIVMSG(tags.getId, channel, message))
 
         case None =>
-          val message = inMessage.show match
-            case "!hey" => ZStream("ho")
-            case _      => ZStream.empty
+          val message = inMessage match
+            case Message("!hey") => ZStream("ho")
+            case _               => ZStream.empty
           message
             .map(msg => Outgoing.PRIVMSG(tags.getId, channel, Message(msg)))
 
@@ -83,6 +81,9 @@ val expected: List[WebSocketFrame] =
     "@reply-parent-msg-id=885196de-cb67-427a-baa8-82f9b0fcd05f PRIVMSG #bar :ho"
   ).map(WebSocketFrame.text)
 
+val mockReq: [T] => Request[RequestResult[T], Any] => Task[Response[RequestResult[T]]] =
+  [T] => (r: Request[RequestResult[T], Any]) => ???
+
 object Tests extends ZIOSpecDefault:
   val spec = suite("tests") {
     test("responds to bits") {
@@ -91,7 +92,7 @@ object Tests extends ZIOSpecDefault:
         env = ZLayer.make[TwitchChat](
           TwitchChat.layer,
           ReadAccessInfo.mockLayer(info),
-          HttpClient.mockLayer(input, ref, { _ => ??? }))
+          HttpClient.mockLayer(input, ref, mockReq))
         _      <- runChat.provide(env)
         output <- ref.get
       yield assert(output)(Assertion.equalTo(expected))

@@ -5,21 +5,53 @@ import cats.Show
 import common.*
 
 import type_classes.*
-import type_classes.instances.parse.given
 
 object Tags:
-  opaque type ClearChatTags       = Map[String, String]
-  opaque type ClearMsgTags        = Map[String, String]
-  opaque type GlobalUserStateTags = Map[String, String]
-  opaque type NoticeTags          = Map[String, String]
-  opaque type UserNoticeTags      = Map[String, String]
-  opaque type PrivmsgTags         = Map[String, String]
-  opaque type RoomStateTags       = Map[String, String]
-  opaque type UserStateTags       = Map[String, String]
-  opaque type WhisperTags         = Map[String, String]
+  opaque type ClearChatTags       = String
+  opaque type ClearMsgTags        = String
+  opaque type GlobalUserStateTags = String
+  opaque type NoticeTags          = String
+  opaque type UserNoticeTags      = String
+  opaque type PrivmsgTags         = String
+  opaque type RoomStateTags       = String
+  opaque type UserStateTags       = String
+  opaque type WhisperTags         = String
 
-//  object PrivmsgTags:
-//    def unapply
+  object ClearChatTags:
+    def apply(map: Map[String, String]): ClearChatTags       = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
+
+  object ClearMsgTags:
+    def apply(map: Map[String, String]): ClearMsgTags        = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
+
+  object GlobalUserStateTags:
+    def apply(map: Map[String, String]): GlobalUserStateTags = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
+
+  object NoticeTags:
+    def apply(map: Map[String, String]): NoticeTags          = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
+
+  object UserNoticeTags:
+    def apply(map: Map[String, String]): UserNoticeTags      = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
+
+  object PrivmsgTags:
+    def apply(map: Map[String, String]): PrivmsgTags         = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
+
+  object RoomStateTags:
+    def apply(map: Map[String, String]): RoomStateTags       = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
+
+  object UserStateTags:
+    def apply(map: Map[String, String]): UserStateTags       = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
+
+  object WhisperTags:
+    def apply(map: Map[String, String]): WhisperTags         = showTagsF(map)
+    def unapply(string: String): Option[Map[String, String]] = readTagsF(string)
 
   private val tagsToMap: String => Map[String, String] =
     _.split(";").flatMap {
@@ -28,38 +60,8 @@ object Tags:
         case _                                     => None
     }.toMap
 
-  private val readTagsF: String => Either[String, Map[String, String]] =
-    matchEither("^@([^ ]+)".r, tagsToMap)(_)
+  private val readTagsF: String => Option[Map[String, String]] =
+    matchOption("@([^ ]+)".r)(_).map(tagsToMap)
 
   private val showTagsF: Map[String, String] => String =
     "@" ++ _.toList.map((k, v) => s"$k=$v").reduce(_ + ";" + _)
-
-  val readClearChatTags: Read[ClearChatTags]            = readTagsF(_)
-  val readClearMsgTags: Read[ClearMsgTags]              = readTagsF(_)
-  val readGlobalUserStateTas: Read[GlobalUserStateTags] = readTagsF(_)
-  val readNoticeTags: Read[NoticeTags]                  = readTagsF(_)
-  val readPrivmsgTags: Read[PrivmsgTags]                = readTagsF(_)
-  val readRoomStateTags: Read[RoomStateTags]            = readTagsF(_)
-  val readUserStateTags: Read[UserStateTags]            = readTagsF(_)
-  val readUserNoticeTags: Read[UserNoticeTags]          = readTagsF(_)
-  val readWhisperTags: Read[WhisperTags]                = readTagsF(_)
-
-  val showClearChatTags: Show[ClearChatTags]            = showTagsF(_)
-  val showClearMsgTags: Show[ClearMsgTags]              = showTagsF(_)
-  val showGlobalUserStateTas: Show[GlobalUserStateTags] = showTagsF(_)
-  val showNoticeTags: Show[NoticeTags]                  = showTagsF(_)
-  val showPrivmsgTags: Show[PrivmsgTags]                = showTagsF(_)
-  val showRoomStateTags: Show[RoomStateTags]            = showTagsF(_)
-  val showUserStateTags: Show[UserStateTags]            = showTagsF(_)
-  val showUserNoticeTags: Show[UserNoticeTags]          = showTagsF(_)
-  val showWhisperTags: Show[WhisperTags]                = showTagsF(_)
-
-  val unwrapClearChatTags: Unwrap[ClearChatTags, Map[String, String]]            = identity(_)
-  val unwrapClearMsgTags: Unwrap[ClearMsgTags, Map[String, String]]              = identity(_)
-  val unwrapGlobalUserStateTas: Unwrap[GlobalUserStateTags, Map[String, String]] = identity(_)
-  val unwrapNoticeTags: Unwrap[NoticeTags, Map[String, String]]                  = identity(_)
-  val unwrapPrivmsgTags: Unwrap[PrivmsgTags, Map[String, String]]                = identity(_)
-  val unwrapRoomStateTags: Unwrap[RoomStateTags, Map[String, String]]            = identity(_)
-  val unwrapUserStateTags: Unwrap[UserStateTags, Map[String, String]]            = identity(_)
-  val unwrapUserNoticeTags: Unwrap[UserNoticeTags, Map[String, String]]          = identity(_)
-  val unwrapWhisperTags: Unwrap[WhisperTags, Map[String, String]]                = identity(_)

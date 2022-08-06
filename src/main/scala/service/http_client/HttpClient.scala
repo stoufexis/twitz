@@ -47,7 +47,7 @@ object HttpClient:
   def mockLayer(
       wsInput: List[WebSocketFrame],
       wsOutput: Ref[List[WebSocketFrame]],
-      fRequest: Request[RequestResult[T], Any] => Task[Response[RequestResult[T]]]): ULayer[HttpClient] =
+      fRequest: [T] => Request[RequestResult[T], Any] => Task[Response[RequestResult[T]]]): ULayer[HttpClient] =
     ZLayer.succeed {
       new HttpClient:
         def websocket(uri: Uri, f: WSFunction): Task[Response[WSResult]] =
@@ -58,6 +58,6 @@ object HttpClient:
             .flatMap(wsOutput.set(_)) *>
             ZIO.succeed(Response(Right(()), StatusCode.Ok))
 
-      def simpleRequest[T](request: Request[RequestResult[T], Any]): Task[Response[RequestResult[T]]] =
-        fRequest(request)
+        def simpleRequest[T](request: Request[RequestResult[T], Any]): Task[Response[RequestResult[T]]] =
+          fRequest(request)
     }

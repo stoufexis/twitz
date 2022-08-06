@@ -23,8 +23,8 @@ import model.Outgoing.*
 
 import common.*
 
-import type_classes.Read.read
-import type_classes.instances.parse.given
+import type_classes.instances.semigroup.given
+import type_classes.instances.show.given
 
 val authStream: ZStream[ReadAccessInfo, Throwable, WebSocketFrame] =
   for
@@ -36,8 +36,8 @@ val authStream: ZStream[ReadAccessInfo, Throwable, WebSocketFrame] =
     join = JOIN(info.channels)
 
     frames <- ZStream(cap, pass, nick, join).map {
-      case auth: Auth         => toFrame(auth)
-      case outgoing: Outgoing => toFrame(outgoing)
+      case auth: Auth         => Auth.toFrame(auth)
+      case outgoing: Outgoing => Outgoing.toFrame(outgoing)
     }
   yield frames
 
@@ -49,12 +49,12 @@ def processFrames(f: ProcessIncoming): Pipe[WebSocketFrame, WebSocketFrame] =
       for
         incoming <- ZStream
           .fromIterable(payload.split("\r\n"))
-          .map(read[Incoming])
+          .map(Incoming.parse)
 
         outgoing <- incoming match
           case Left(value)  => printIgnore(value)
           case Right(value) => f(value)
-      yield toFrame(outgoing)
+      yield Outgoing.toFrame(outgoing)
 
     case Ping(payload) => ZStream(Pong(payload))
     case other         => printIgnore(other)
