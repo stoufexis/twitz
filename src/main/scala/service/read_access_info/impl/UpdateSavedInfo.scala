@@ -10,6 +10,7 @@ import sttp.client3.*
 import sttp.client3.circe.*
 
 import service.http_client.*
+import service.local_storage.LocalStorage
 
 import model.AccessInfo
 import model.AuxTypes.{AccessToken, RefreshToken}
@@ -19,17 +20,18 @@ import common.*
 import type_classes.instances.decoder.given
 
 import java.io.{FileNotFoundException, IOException}
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 
 case class RefreshResponse(
     access_token: AccessToken,
     refresh_token: RefreshToken,
     scope: List[String],
-    token_type: String)
-    derives Decoder
+    token_type: String) derives Decoder
+
+val path: Path = Paths.get("tokens.txt")
 
 def updateInfo(info: AccessInfo): RIO[HttpClient, AccessInfo] =
-  val AccessInfo(_, refreshToken, clientId, clientSecret, _) = info
+  val AccessInfo(_, RefreshToken(refreshToken), clientId, clientSecret, _) = info
 
   val body = s"grant_type=refresh_token" +
     s"&refresh_token=$refreshToken" +
@@ -43,33 +45,31 @@ def updateInfo(info: AccessInfo): RIO[HttpClient, AccessInfo] =
     .response(asJson[RefreshResponse])
 
   for
-    response <- HttpClient.simpleRequest[RefreshResponse](request)
+    response <- HttpClient.simpleRequest(request)
     body     <- ZIO.fromEither(response.body)
   yield info.copy(refreshToken = body.refresh_token, accessToken = body.access_token)
 
-def getSavedInfo(path: Path): RIO[Scope, Option[(RefreshToken, AccessToken)]] =
+def getSavedInfo: RIO[LocalStorage, Option[(RefreshToken, AccessToken)]] =
   for
-    savedInfo <- ZIO.readFile(path)
-      .map(Some(_))
-      .catchSome { case _: FileNotFoundException => ZIO.succeed(None) }
-
-    out <- savedInfo.traverse {
-      _.splitList(" ") match
+    savedInfo <- LocalStorage.get(path)
+    out       <-
+      savedInfo.map(_.splitList(" ")).traverse {
         case refresh :: access :: _ => ZIO.succeed((RefreshToken(refresh), AccessToken(access)))
         case content                => ZIO.fail(Exception(s"Corrupt file with content: $content"))
-    }
+      }
   yield out
 
-def writeTokens(path: Path, refreshToken: RefreshToken, accessToken: AccessToken): ZIO[Scope, IOException, Unit] =
-  val (RefreshToken(refresh), AccessToken(access)) = (refreshToken, accessToken)
-  ZIO.writeFile(path, refresh + " " + access)
+def writeTokens(refreshToken: RefreshToken, accessToken: AccessToken): ZIO[LocalStorage, IOException, Unit] =
+  val RefreshToken(refresh) = refreshToken
+  val AccessToken(access)   = accessToken
+  LocalStorage.set(path, refresh + " " + access)
 
-def updateSavedInfo(initial: AccessInfo, path: Path): RIO[Scope & HttpClient, AccessInfo] =
+def updateSavedInfo(initial: AccessInfo): RIO[LocalStorage & HttpClient, AccessInfo] =
   for
-    oldInfo <- getSavedInfo(path).map {
+    oldInfo <- getSavedInfo.map {
       case Some((refresh, access)) => initial.copy(refreshToken = refresh, accessToken = access)
       case None                    => initial
     }
     newInfo <- updateInfo(oldInfo)
-    _       <- writeTokens(path, newInfo.refreshToken, newInfo.accessToken)
+    _       <- writeTokens(newInfo.refreshToken, newInfo.accessToken)
   yield newInfo

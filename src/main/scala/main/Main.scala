@@ -11,6 +11,7 @@ import sttp.client3.*
 import sttp.client3.httpclient.zio.HttpClientZioBackend
 
 import service.http_client.HttpClient
+import service.local_storage.LocalStorage
 import service.process_twitch_chat.TwitchChat
 import service.read_access_info.ReadAccessInfo
 
@@ -31,8 +32,6 @@ object Main extends ZIOAppDefault:
     clientId = "4ernutpawy9xrie0cm7lvz9djzobof",
     clientSecret = "2fut789ifewi46wdzssg8ver6r2xbp"
   )
-
-  val path: Path = Paths.get("tokens.txt")
 
   val runChat: RIO[TwitchChat, Response[Either[String, Unit]]] =
     TwitchChat.process {
@@ -68,8 +67,9 @@ object Main extends ZIOAppDefault:
     ZLayer.make[TwitchChat](
       TwitchChat.layer,
       HttpClient.layer,
-      ReadAccessInfo.makeLayer(info, path),
-      HttpClientZioBackend.layer(),
-      Scope.default)
+      ReadAccessInfo.layer(info),
+      LocalStorage.layer(Path.of(".")),
+      Scope.default,
+      HttpClientZioBackend.layer())
 
   val run = runChat.provide(environment)
