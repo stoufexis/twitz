@@ -47,11 +47,8 @@ def processFrames(f: ProcessIncoming): Pipe[WebSocketFrame, WebSocketFrame] =
   _.flatMap {
     case Text(payload, _, _) =>
       for
-        incoming <- ZStream
-          .fromIterable(payload.split("\r\n"))
-          .map(Incoming.parse)
-
-        outgoing <- incoming match
+        incoming <- ZStream(payload.split("\r\n")*)
+        outgoing <- Incoming.parse(incoming) match
           case Left(value)  => printIgnore(value)
           case Right(value) => f(value)
       yield Outgoing.toFrame(outgoing)

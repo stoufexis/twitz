@@ -18,7 +18,6 @@ type WSResult         = Either[String, Unit]
 
 trait HttpClient:
   def websocket(uri: Uri, f: WSFunction): Task[Response[WSResult]]
-
   def simpleRequest[T](request: Request[RequestResult[T], Any]): Task[Response[RequestResult[T]]]
 
 object HttpClient:
@@ -29,19 +28,16 @@ object HttpClient:
     ZIO.serviceWithZIO(_.simpleRequest(request))
 
   val layer: URLayer[SttpBackend[Task, WebSockets & ZioStreams], HttpClient] =
-    ZLayer.fromFunctionEnvironment { backend =>
-      new:
+    ZLayer.fromFunction { (backend: SttpBackend[Task, WebSockets & ZioStreams]) =>
+      new HttpClient:
         def websocket(uri: Uri, f: WSFunction): Task[Response[WSResult]] =
           basicRequest
             .get(uri)
             .response(asWebSocketStream(ZioStreams)(f))
-            .sendZIO
-            .provideEnvironment(backend)
+            .send(backend)
 
         def simpleRequest[T](request: Request[RequestResult[T], Any]): Task[Response[RequestResult[T]]] =
-          request
-            .sendZIO
-            .provideEnvironment(backend)
+          request.send(backend)
     }
 
   def mockLayer(
@@ -54,7 +50,7 @@ object HttpClient:
           ZStream
             .fromIterable(wsInput)
             .viaFunction(f)
-            .runFold[List[WebSocketFrame]](Nil)(_ :+ _)
+            .runFold(List[WebSocketFrame]())(_ :+ _)
             .flatMap(wsOutput.set(_)) *>
             ZIO.succeed(Response(Right(()), StatusCode.Ok))
 
