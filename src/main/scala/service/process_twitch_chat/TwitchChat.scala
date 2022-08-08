@@ -15,7 +15,7 @@ import model.*
 
 import common.*
 
-type ProcessIncoming = Incoming => Stream[Throwable, Outgoing]
+type ProcessIncoming = Stream[Throwable, Incoming] => Stream[Throwable, Outgoing]
 
 trait TwitchChat:
   def process(f: ProcessIncoming): Task[Response[Either[String, Unit]]]

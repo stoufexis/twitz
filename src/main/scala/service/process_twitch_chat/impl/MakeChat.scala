@@ -30,10 +30,10 @@ val authStream: ZStream[ReadAccessInfo, Throwable, WebSocketFrame] =
   for
     info <- ZStream.fromZIO(ReadAccessInfo.get)
 
-    cap  = CAP_REQ(Capabilities.membership |+| Capabilities.tags |+| Capabilities.commands)
-    pass = PASS(info.accessToken)
-    nick = NICK(info.channels)
-    join = JOIN(info.channels)
+    cap  = Auth.CAP_REQ(Capabilities.membership |+| Capabilities.tags |+| Capabilities.commands)
+    pass = Auth.PASS(info.accessToken)
+    nick = Outgoing.NICK(info.channels)
+    join = Outgoing.JOIN(info.channels)
 
     frames <- ZStream(cap, pass, nick, join).map {
       case auth: Auth         => Auth.toFrame(auth)
@@ -45,16 +45,16 @@ type Pipe[A, B] = ZStream[Any, Throwable, A] => ZStream[Any, Throwable, B]
 
 def processFrames(f: ProcessIncoming): Pipe[WebSocketFrame, WebSocketFrame] =
   _.flatMap {
-    case Text(payload, _, _) =>
+    case WebSocketFrame.Text(payload, _, _) =>
       for
         incoming <- ZStream(payload.split("\r\n")*)
         outgoing <- Incoming.parse(incoming) match
           case Left(value)  => printIgnore(value)
-          case Right(value) => f(value)
+          case Right(value) => ZStream(value).viaFunction(f)
       yield Outgoing.toFrame(outgoing)
 
-    case Ping(payload) => ZStream(Pong(payload))
-    case other         => printIgnore(other)
+    case WebSocketFrame.Ping(payload) => ZStream(WebSocketFrame.Pong(payload))
+    case other                        => printIgnore(other)
   }
 
 def makeChatter(f: ProcessIncoming): RIO[HttpClient & ReadAccessInfo, Response[Either[String, Unit]]] =
