@@ -17,7 +17,9 @@ import model.AuxTypes.{AccessToken, RefreshToken}
 
 import common.*
 
+import type_classes.Unwrap.unwrap
 import type_classes.instances.decoder.given
+import type_classes.instances.unwrap.given
 
 import java.io.{FileNotFoundException, IOException}
 import java.nio.file.{Path, Paths}
@@ -51,18 +53,15 @@ def updateInfo(info: AccessInfo): RIO[HttpClient, AccessInfo] =
 
 def getSavedInfo: RIO[LocalStorage, Option[(RefreshToken, AccessToken)]] =
   for
-    savedInfo <- LocalStorage.get(path)
-    out       <-
-      savedInfo.map(_.splitList(" ")).traverse {
-        case refresh :: access :: _ => ZIO.succeed((RefreshToken(refresh), AccessToken(access)))
-        case content                => ZIO.fail(Exception(s"Corrupt file with content: $content"))
-      }
+    saved <- LocalStorage.get(path)
+    out   <- saved.map(_.splitList(" ")).traverse {
+      case refresh :: access :: Nil => ZIO.succeed((RefreshToken(refresh), AccessToken(access)))
+      case content                  => ZIO.fail(Exception(s"Corrupt file with content: $content"))
+    }
   yield out
 
-def writeTokens(refreshToken: RefreshToken, accessToken: AccessToken): ZIO[LocalStorage, IOException, Unit] =
-  val RefreshToken(refresh) = refreshToken
-  val AccessToken(access)   = accessToken
-  LocalStorage.set(path, refresh + " " + access)
+def writeTokens(refresh: RefreshToken, access: AccessToken): ZIO[LocalStorage, IOException, Unit] =
+  LocalStorage.set(path, refresh.unwrap + " " + access.unwrap)
 
 def updateSavedInfo(initial: AccessInfo): RIO[LocalStorage & HttpClient, AccessInfo] =
   for

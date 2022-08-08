@@ -10,6 +10,8 @@ import scala.annotation.targetName
 
 import common.*
 
+import type_classes.Unwrap
+
 object AuxTypes:
   opaque type Channel      = String
   opaque type BodyChannel  = String
@@ -25,16 +27,16 @@ object AuxTypes:
   opaque type Capabilities = List[String]
 
   object Channel:
-    def apply(string: String): Channel           = s"#$string"
-    def unapply(channel: String): Option[String] = matchOption("#([A-Za-z\\d]+)".r)(channel)
+    def apply(string: String): Channel              = s"#$string"
+    def unapply(channel: String): Option[String]    = matchOption("#([A-Za-z\\d]+)".r)(channel)
 
   object BodyChannel:
-    def apply(string: String): BodyChannel       = s":$string"
-    def unapply(channel: String): Option[String] = matchOption(":(([A-Za-z\\d]+)|-)".r)(channel)
+    def apply(string: String): BodyChannel              = s":$string"
+    def unapply(channel: String): Option[String]        = matchOption(":(([A-Za-z\\d]+)|-)".r)(channel)
 
   object Message:
-    def apply(string: String): Message          = s":$string"
-    def unapply(string: String): Option[String] = matchOption(":(.+$)".r)(string)
+    def apply(string: String): Message              = s":$string"
+    def unapply(string: String): Option[String]     = matchOption(":(.+$)".r)(string)
 
   object FullUser:
     def apply(string: String): FullUser         = s":$string!$string@$string.tmi.twitch.tv"
@@ -42,12 +44,12 @@ object AuxTypes:
       matchOption(":([A-Za-z\\d]+)!\\1@\\1.tmi.twitch.tv".r)(string)
 
   object PlainUser:
-    def apply(string: String): PlainUser        = string
-    def unapply(string: String): Option[String] = matchOption("([A-Za-z\\d]+)".r)(string)
+    def apply(string: String): PlainUser           = string
+    def unapply(string: String): Option[String]    = matchOption("([A-Za-z\\d]+)".r)(string)
 
   object BodyUser:
-    def apply(string: String): BodyUser         = s":$string"
-    def unapply(string: String): Option[String] = matchOption(":([A-Za-z\\d]+)".r)(string)
+    def apply(string: String): BodyUser           = s":$string"
+    def unapply(string: String): Option[String]   = matchOption(":([A-Za-z\\d]+)".r)(string)
 
   object Capabilities:
     val membership: Capabilities = List("twitch.tv/membership")
@@ -55,22 +57,34 @@ object AuxTypes:
     val commands: Capabilities   = List("twitch.tv/commands")
 
   object JoinChannel:
-    def apply(str: String*): JoinChannels = str.map(s => s"#$s").reduce(_ + "," + _)
+    def apply(str: String*): JoinChannels                        = str.map(Channel(_)).reduce(_ + "," + _)
 
   object MessageId:
-    def apply(str: String): MessageId = s"@reply-parent-msg-id=$str"
+    def apply(str: String): MessageId                   = s"@reply-parent-msg-id=$str"
 
   object AccessToken:
-    def apply(str: String): AccessToken         = str
-    def unapply(string: String): Option[String] = Some(string)
+    def apply(str: String): AccessToken                     = str
+    def unapply(string: String): Option[String]             = Some(string)
 
   object RefreshToken:
-    def apply(str: String): RefreshToken        = str
-    def unapply(string: String): Option[String] = Some(string)
+    def apply(str: String): RefreshToken               = str
+    def unapply(string: String): Option[String]        = Some(string)
 
   object Viewers:
-    def apply(i: Int): Viewers               = Show[Int].show(i)
-    def unapply(string: String): Option[Int] = string.toIntOption
+    def apply(i: Int): Viewers                 = Show[Int].show(i)
+    def unapply(string: String): Option[Int]   = string.toIntOption
+
+  val unwrapChannel: Unwrap[Channel, String]                 = _.drop(1)
+  val unwrapBodyChannel: Unwrap[BodyChannel, String]         = _.drop(1)
+  val unwrapMessage: Unwrap[Message, String]                 = _.drop(1)
+  val unwrapFullUser: Unwrap[FullUser, String]               = _.drop(1).takeWhile(_ != '!')
+  val unwrapPlainUser: Unwrap[PlainUser, String]             = identity(_)
+  val unwrapBodyUser: Unwrap[BodyUser, String]               = _.drop(1)
+  val unwrapJoinChannels: Unwrap[JoinChannels, List[String]] = _.splitList(",")
+  val unwrapMessageId: Unwrap[MessageId, String]             = _.split("=")(1)
+  val unwrapAccessToken: Unwrap[AccessToken, String]         = identity(_)
+  val unwrapRefreshToken: Unwrap[RefreshToken, String]       = identity(_)
+  val unwrapViewers: Unwrap[Viewers, Int]                    = _.toInt
 
   val showChannelContent: Show[Channel]           = identity(_)
   val showBodyChannelContent: Show[BodyChannel]   = identity(_)
