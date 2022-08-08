@@ -6,25 +6,39 @@ import model.AuxTypes.MessageId
 import model.NoticeType.*
 import model.Tags.*
 
+import type_classes.Unwrap.unwrap
+import type_classes.instances.unwrap.given
+
+val Bits  = Extract[PrivmsgTags, Int]("bits", _.toIntOption)
+val Id    = Extract[PrivmsgTags, MessageId]("id", x => Some(MessageId(x)))
+val Login = Extract[UserNoticeTags, String]("login", Some(_))
 
 extension (privmsgTags: PrivmsgTags)
   def getBits: Option[Int] =
-    val PrivmsgTags(tags) = privmsgTags
-    tags
+    privmsgTags
+      .unwrap
       .get("bits")
       .flatMap(_.toIntOption)
 
   def getId: Option[MessageId] =
-    val PrivmsgTags(tags) = privmsgTags
-    tags
+    privmsgTags
+      .unwrap
       .get("id")
       .map(MessageId(_))
+
+object Type:
+  @targetName("unapplyUserNoticeTags")
+  def unapply(tags: UserNoticeTags): Option[(UserNoticeType, UserNoticeTags)] =
+    tags.getType.map((_, tags))
+
+  @targetName("unapplyNoticeTags")
+  def unapply(tags: NoticeTags): Option[(NoticeType, NoticeTags)] =
+    tags.getType.map((_, tags))
 
 extension (userNoticeTags: UserNoticeTags)
   @targetName("userNoticeTagsGetType")
   def getType: Option[UserNoticeType] =
-    val UserNoticeTags(tags) = userNoticeTags
-    tags.get("msg-id").flatMap {
+    userNoticeTags.unwrap.get("msg-id").flatMap {
       case "sub"                 => Some(UserNoticeType.SUB)
       case "resub"               => Some(UserNoticeType.RESUB)
       case "subgift"             => Some(UserNoticeType.SUBGIFT)
@@ -39,14 +53,12 @@ extension (userNoticeTags: UserNoticeTags)
     }
 
   def getLogin: Option[String] =
-    val UserNoticeTags(tags) = userNoticeTags
-    tags.get("login")
+    userNoticeTags.unwrap.get("login")
 
 extension (noticeTags: NoticeTags)
   @targetName("noticeTagsGetType")
   def getType: Option[NoticeType] =
-    val NoticeTags(tags) = noticeTags
-    tags.get("msg-id").flatMap {
+    noticeTags.unwrap.get("msg-id").flatMap {
       case "already_banned"                     => Some(ALREADY_BANNED)
       case "already_emote_only_off"             => Some(ALREADY_EMOTE_ONLY_OFF)
       case "already_emote_only_on"              => Some(ALREADY_EMOTE_ONLY_ON)

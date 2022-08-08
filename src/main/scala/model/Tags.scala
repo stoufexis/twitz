@@ -2,9 +2,12 @@ package model
 
 import cats.Show
 
+import model.AuxTypes.Channel
+
 import common.*
 
 import type_classes.*
+import type_classes.Unwrap.unwrap
 
 object Tags:
   opaque type ClearChatTags       = String
@@ -16,6 +19,15 @@ object Tags:
   opaque type RoomStateTags       = String
   opaque type UserStateTags       = String
   opaque type WhisperTags         = String
+
+  type Tags =
+    ClearChatTags | ClearMsgTags | GlobalUserStateTags |
+      NoticeTags | UserNoticeTags | PrivmsgTags |
+      RoomStateTags | UserStateTags | WhisperTags
+
+  case class Extract[T <: Tags: [x] =>> Unwrap[x, Map[String, String]], A](key: String, f: String => Option[A]):
+    def unapply(tags: T): Option[(A, T)] =
+      tags.unwrap[Map[String, String]].get(key).flatMap(f).map((_, tags))
 
   object ClearChatTags:
     def apply(map: Map[String, String]): ClearChatTags       = showTagsF(map)
@@ -65,3 +77,13 @@ object Tags:
 
   private val showTagsF: Map[String, String] => String =
     "@" ++ _.toList.map((k, v) => s"$k=$v").reduce(_ + ";" + _)
+
+  val unwrapClearChatTags: Unwrap[ClearChatTags, Map[String, String]]             = tagsToMap(_)
+  val unwrapClearMsgTags: Unwrap[ClearMsgTags, Map[String, String]]               = tagsToMap(_)
+  val unwrapGlobalUserStateTags: Unwrap[GlobalUserStateTags, Map[String, String]] = tagsToMap(_)
+  val unwrapNoticeTags: Unwrap[NoticeTags, Map[String, String]]                   = tagsToMap(_)
+  val unwrapUserNoticeTags: Unwrap[UserNoticeTags, Map[String, String]]           = tagsToMap(_)
+  val unwrapPrivmsgTags: Unwrap[PrivmsgTags, Map[String, String]]                 = tagsToMap(_)
+  val unwrapRoomStateTags: Unwrap[RoomStateTags, Map[String, String]]             = tagsToMap(_)
+  val unwrapUserStateTags: Unwrap[UserStateTags, Map[String, String]]             = tagsToMap(_)
+  val unwrapWhisperTags: Unwrap[WhisperTags, Map[String, String]]                 = tagsToMap(_)
