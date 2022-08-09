@@ -210,5 +210,4 @@ val strToNoticeType: String => Option[NoticeType] = {
   case "whisper_restricted"                 => Some(WHISPER_RESTRICTED)
   case "Whisper_restricted_recipient"       => Some(WHISPER_RESTRICTED_RECIPIENT)
   case _                                    => None
-
 }

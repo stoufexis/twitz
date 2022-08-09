@@ -49,7 +49,7 @@ object Incoming:
   private val JOIN_REGEX            = "([^ ]+) JOIN ([^ ]+)".r
   private val PART_REGEX            = "([^ ]+) PART ([^ ]+)".r
 
-  def parse: String => Either[String, Incoming] =
+  val parse: String => Either[String, Incoming] = {
     case PRIVMSG_REGEX(PrivmsgTags(t), FullUser(user), Channel(ch), Message(msg)) =>
       Right(PRIVMSG(t, user, ch, msg))
 
@@ -70,16 +70,19 @@ object Incoming:
     case JOIN_REGEX(FullUser(u), Channel(ch))                           => Right(JOIN(u, ch))
     case PART_REGEX(FullUser(u), Channel(ch))                           => Right(PART(u, ch))
     case in                                                             => Left(in)
+  }
 
 object Outgoing:
-  def toFrame: Outgoing => WebSocketFrame =
+  val toFrame: Outgoing => WebSocketFrame = {
     case Outgoing.PRIVMSG(Some(reply), channel, body) => WebSocketFrame.text(show"$reply PRIVMSG $channel $body")
     case Outgoing.PRIVMSG(None, channel, body)        => WebSocketFrame.text(show"PRIVMSG $channel $body")
     case Outgoing.PONG(body)                          => WebSocketFrame.text(show"PONG $body")
     case Outgoing.NICK(channel)                       => WebSocketFrame.text(show"NICK $channel")
     case Outgoing.JOIN(channel)                       => WebSocketFrame.text(show"JOIN $channel")
+  }
 
 object Auth:
-  def toFrame: Auth => WebSocketFrame =
+  val toFrame: Auth => WebSocketFrame = {
     case Auth.CAP_REQ(caps) => WebSocketFrame.text(show"CAP REQ $caps")
     case Auth.PASS(token)   => WebSocketFrame.text(show"PASS oauth:$token")
+  }
