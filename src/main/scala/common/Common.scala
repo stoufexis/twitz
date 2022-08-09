@@ -16,7 +16,7 @@ import scala.deriving.Mirror
 import scala.util.matching.Regex
 
 def printStream[A: Show](a: A): ZStream[Any, Throwable, Unit] =
-  ZStream.execute(Console.printLine(Show[A].show(a)))
+  ZStream.fromZIO(Console.printLine(Show[A].show(a)))
 
 def printIgnore[A: Show](a: A): ZStream[Any, Throwable, Nothing] =
   printStream(a) *> ZStream.empty
@@ -48,6 +48,3 @@ extension (_l: ZLayer.type)
 extension [T, R](request: Request[T, R])
   inline def sendZIO: RIO[SttpBackend[Task, R], Response[T]] =
     ZIO.serviceWithZIO(request.send(_))
-
-def toFrame[A: Show](a: A): WebSocketFrame =
-  WebSocketFrame.text(Show[A].show(a))
