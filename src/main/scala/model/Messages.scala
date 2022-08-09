@@ -50,59 +50,34 @@ object Incoming:
   private val PART_REGEX            = "([^ ]+) PART ([^ ]+)".r
 
   def parse: String => Either[String, Incoming] =
-    case GLOBALUSERSTATE_REGEX(GlobalUserStateTags(t)) =>
-      Right(GLOBALUSERSTATE(GlobalUserStateTags(t)))
-
-    case HOSTTARGET_REGEX(Channel(ch), BodyChannel(bch), Viewers(v)) =>
-      Right(HOSTTARGET(Channel(ch), BodyChannel(bch), Viewers(v)))
-
-    case PING_REGEX(body) =>
-      Right(PING(body))
-
     case PRIVMSG_REGEX(PrivmsgTags(t), FullUser(user), Channel(ch), Message(msg)) =>
-      Right(PRIVMSG(PrivmsgTags(t), FullUser(user), Channel(ch), Message(msg)))
-
-    case ROOMSTATE_REGEX(RoomStateTags(t), Channel(ch)) =>
-      Right(ROOMSTATE(RoomStateTags(t), Channel(ch)))
-
-    case CLEARMSG_REGEX(ClearMsgTags(t), Channel(ch), Message(msg)) =>
-      Right(CLEARMSG(ClearMsgTags(t), Channel(ch), Message(msg)))
-
-    case CLEARCHAT_REGEX(ClearChatTags(t), Channel(ch)) =>
-      Right(CLEARCHAT(ClearChatTags(t), Channel(ch), None))
-
-    case CLEARCHAT_REGEX(ClearChatTags(t), Channel(ch), BodyUser(u)) =>
-      Right(CLEARCHAT(ClearChatTags(t), Channel(ch), Some(BodyUser(u))))
-
-    case NOTICE_REGEX(NoticeTags(t), Channel(ch), Message(msg)) =>
-      Right(NOTICE(NoticeTags(t), Channel(ch), Message(msg)))
-
-    case USERNOTICE_REGEX(UserNoticeTags(t), Channel(ch)) =>
-      Right(USERNOTICE(UserNoticeTags(t), Channel(ch), None))
-
-    case USERNOTICE_REGEX(UserNoticeTags(t), Channel(ch), Message(msg)) =>
-      Right(USERNOTICE(UserNoticeTags(t), Channel(ch), Some(Message(msg))))
-
-    case USERSTATE_REGEX(UserStateTags(u), Channel(ch)) =>
-      Right(USERSTATE(UserStateTags(u), Channel(ch)))
+      Right(PRIVMSG(t, user, ch, msg))
 
     case WHISPER_REGEX(WhisperTags(t), BodyUser(bu), PlainUser(pu), Message(msg)) =>
-      Right(WHISPER(WhisperTags(t), BodyUser(bu), PlainUser(pu), Message(msg)))
+      Right(WHISPER(t, bu, pu, msg))
 
-    case JOIN_REGEX(FullUser(u), Channel(ch)) =>
-      Right(JOIN(FullUser(u), Channel(ch)))
-
-    case PART_REGEX(FullUser(u), Channel(ch)) =>
-      Right(PART(FullUser(u), Channel(ch)))
-
-    case in => Left(in)
+    case GLOBALUSERSTATE_REGEX(GlobalUserStateTags(t))                  => Right(GLOBALUSERSTATE(t))
+    case HOSTTARGET_REGEX(Channel(ch), BodyChannel(bch), Viewers(v))    => Right(HOSTTARGET(ch, bch, v))
+    case PING_REGEX(body)                                               => Right(PING(body))
+    case ROOMSTATE_REGEX(RoomStateTags(t), Channel(ch))                 => Right(ROOMSTATE(t, ch))
+    case CLEARMSG_REGEX(ClearMsgTags(t), Channel(ch), Message(msg))     => Right(CLEARMSG(t, ch, msg))
+    case CLEARCHAT_REGEX(ClearChatTags(t), Channel(ch))                 => Right(CLEARCHAT(t, ch, None))
+    case CLEARCHAT_REGEX(ClearChatTags(t), Channel(ch), BodyUser(u))    => Right(CLEARCHAT(t, ch, Some(u)))
+    case NOTICE_REGEX(NoticeTags(t), Channel(ch), Message(msg))         => Right(NOTICE(t, ch, msg))
+    case USERNOTICE_REGEX(UserNoticeTags(t), Channel(ch))               => Right(USERNOTICE(t, ch, None))
+    case USERNOTICE_REGEX(UserNoticeTags(t), Channel(ch), Message(msg)) => Right(USERNOTICE(t, ch, Some(msg)))
+    case USERSTATE_REGEX(UserStateTags(u), Channel(ch))                 => Right(USERSTATE(u, ch))
+    case JOIN_REGEX(FullUser(u), Channel(ch))                           => Right(JOIN(u, ch))
+    case PART_REGEX(FullUser(u), Channel(ch))                           => Right(PART(u, ch))
+    case in                                                             => Left(in)
 
 object Outgoing:
   def toFrame: Outgoing => WebSocketFrame =
-    case Outgoing.PRIVMSG(replyTo, channel, body) => WebSocketFrame.text(show"$replyTo PRIVMSG $channel $body")
-    case Outgoing.PONG(body)                      => WebSocketFrame.text(show"PONG $body")
-    case Outgoing.NICK(channel)                   => WebSocketFrame.text(show"NICK $channel")
-    case Outgoing.JOIN(channel)                   => WebSocketFrame.text(show"JOIN $channel")
+    case Outgoing.PRIVMSG(Some(reply), channel, body) => WebSocketFrame.text(show"$reply PRIVMSG $channel $body")
+    case Outgoing.PRIVMSG(None, channel, body)        => WebSocketFrame.text(show"PRIVMSG $channel $body")
+    case Outgoing.PONG(body)                          => WebSocketFrame.text(show"PONG $body")
+    case Outgoing.NICK(channel)                       => WebSocketFrame.text(show"NICK $channel")
+    case Outgoing.JOIN(channel)                       => WebSocketFrame.text(show"JOIN $channel")
 
 object Auth:
   def toFrame: Auth => WebSocketFrame =
