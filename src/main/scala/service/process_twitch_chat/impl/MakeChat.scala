@@ -62,6 +62,6 @@ def makeChatter(f: ProcessIncoming): RIO[HttpClient & ReadAccessInfo, Response[E
     info <- ZIO.environment[ReadAccessInfo]
     auth = authStream.provideEnvironment(info)
     response <- HttpClient.websocket(
-      uri = uri"ws://irc-ws.chat.twitch.tv:80",
+      uri = uri"ws://irc-ws.chat.twitch.tv:80", // TODO: Switch to secure URI
       f = auth ++ _.viaFunction(processFrames(f)))
   yield response
