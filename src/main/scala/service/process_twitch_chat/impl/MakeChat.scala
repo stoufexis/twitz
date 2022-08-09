@@ -58,9 +58,10 @@ def processFrames(f: ProcessIncoming): Pipe[WebSocketFrame, WebSocketFrame] =
   }
 
 def makeChatter(f: ProcessIncoming): RIO[HttpClient & ReadAccessInfo, Response[Either[String, Unit]]] =
-  val uri = uri"ws://irc-ws.chat.twitch.tv:80"
   for
     info <- ZIO.environment[ReadAccessInfo]
     auth = authStream.provideEnvironment(info)
-    response <- HttpClient.websocket(uri, auth ++ _.viaFunction(processFrames(f)))
+    response <- HttpClient.websocket(
+      uri = uri"ws://irc-ws.chat.twitch.tv:80",
+      f = auth ++ _.viaFunction(processFrames(f)))
   yield response
