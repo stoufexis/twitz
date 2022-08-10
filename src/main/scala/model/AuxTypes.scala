@@ -39,9 +39,8 @@ object AuxTypes:
     def unapply(string: String): Option[Message] = matchOption(":(.+$)".r)(string)
 
   object FullUser:
-    def apply(string: String): FullUser           = string
-    def unapply(string: String): Option[FullUser] =
-      matchOption(":([A-Za-z\\d]+)!\\1@\\1.tmi.twitch.tv".r)(string)
+    def apply(string: String): FullUser        = string
+    def unapply(str: String): Option[FullUser] = matchOption(":([A-Za-z\\d]+)!\\1@\\1.tmi.twitch.tv".r)(str)
 
   object PlainUser:
     def apply(string: String): PlainUser           = string
