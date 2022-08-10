@@ -1,4 +1,4 @@
-package service.read_access_info.impl
+package service.authentication_store.impl
 
 import io.circe.Decoder
 import zio.*
@@ -12,8 +12,8 @@ import sttp.client3.circe.*
 import service.http_client.*
 import service.local_storage.LocalStorage
 
-import model.AccessInfo
 import model.AuxTypes.{AccessToken, RefreshToken}
+import model.Credentials
 
 import common.*
 
@@ -32,8 +32,8 @@ case class RefreshResponse(
 
 val path: Path = Paths.get("tokens.txt")
 
-def updateInfo(info: AccessInfo): RIO[HttpClient, AccessInfo] =
-  val AccessInfo(_, RefreshToken(refreshToken), clientId, clientSecret, _) = info
+def updateInfo(info: Credentials): RIO[HttpClient, Credentials] =
+  val Credentials(_, RefreshToken(refreshToken), clientId, clientSecret, _) = info
 
   val body = s"grant_type=refresh_token" +
     s"&refresh_token=$refreshToken" +
@@ -63,7 +63,7 @@ def getSavedInfo: RIO[LocalStorage, Option[(RefreshToken, AccessToken)]] =
 def writeTokens(refresh: RefreshToken, access: AccessToken): ZIO[LocalStorage, IOException, Unit] =
   LocalStorage.set(path, refresh.unwrap + " " + access.unwrap)
 
-def updateSavedInfo(initial: AccessInfo): RIO[LocalStorage & HttpClient, AccessInfo] =
+def updateSavedInfo(initial: Credentials): RIO[LocalStorage & HttpClient, Credentials] =
   for
     oldInfo <- getSavedInfo.map {
       case Some((refresh, access)) => initial.copy(refreshToken = refresh, accessToken = access)

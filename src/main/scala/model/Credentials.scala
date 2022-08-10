@@ -2,7 +2,7 @@ package model
 
 import model.AuxTypes.{AccessToken, JoinChannels, RefreshToken}
 
-case class AccessInfo(
+case class Credentials(
     accessToken: AccessToken,
     refreshToken: RefreshToken,
     clientId: String,

@@ -10,17 +10,17 @@ import sttp.capabilities.*
 import sttp.capabilities.WebSockets
 import sttp.client3.httpclient.zio.HttpClientZioBackend
 import sttp.client3.testing.*
-import sttp.client3.{Request, *}
+import sttp.client3.*
 import sttp.model.*
 import sttp.monad.MonadError
 import sttp.ws.*
 
 import service.http_client.*
 import service.process_twitch_chat.TwitchChat
-import service.read_access_info.ReadAccessInfo
+import service.authentication_store.AuthenticationStore
 
 import model.*
-import model.AccessInfo.*
+import model.Credentials.*
 import model.AuxTypes.*
 import model.Tags.*
 
@@ -32,7 +32,7 @@ import type_classes.instances.unwrap.given
 import java.io.FileNotFoundException
 import java.nio.file.{Path, Paths}
 
-val info = AccessInfo(
+val info = Credentials(
   channels = JoinChannel("channel123"),
   accessToken = AccessToken("abcdefghijklmnopqrstuvwxyz1234567890"),
   refreshToken = RefreshToken("1234567890abcdefghijklmnopqrstuvwxyz"),
@@ -43,26 +43,24 @@ val info = AccessInfo(
 def streamOutgoing(replyTo: Option[MessageId], channel: Channel, message: String): UStream[Outgoing.PRIVMSG] =
   ZStream(Outgoing.PRIVMSG(replyTo, channel, Message(message)))
 
-val runChat =
-  TwitchChat.process {
-    _.flatMap {
-      case Incoming.PRIVMSG(Bits(bits, tags), from, channel, _) =>
-        val message = s"Thank you ${from.unwrap} for $bits bits"
-        streamOutgoing(tags.getId, channel, message)
+val processChat: ZStream[Any, Throwable, Incoming] => ZStream[Any, Throwable, Outgoing] =
+  _.flatMap {
+    case Incoming.PRIVMSG(Bits(bits, tags), from, channel, _) =>
+      val message = s"Thank you ${from.unwrap} for $bits bits"
+      streamOutgoing(tags.getId, channel, message)
 
-      case Incoming.PRIVMSG(tags, _, channel, inMessage) =>
-        for
-          msg <- inMessage.unwrap match
-            case "!hey" => ZStream("ho")
-            case _      => ZStream.empty
-        yield Outgoing.PRIVMSG(tags.getId, channel, Message(msg))
+    case Incoming.PRIVMSG(tags, _, channel, inMessage) =>
+      for
+        msg <- inMessage.unwrap match
+          case "!hey" => ZStream("ho")
+          case _      => ZStream.empty
+      yield Outgoing.PRIVMSG(tags.getId, channel, Message(msg))
 
-      case Incoming.USERNOTICE(Type(UserNoticeType.SUB | UserNoticeType.RESUB, Login(name, _)), channel, _) =>
-        val message = s"Thank you ${name.unwrap} for subscribing!"
-        streamOutgoing(None, channel, message)
+    case Incoming.USERNOTICE(Type(UserNoticeType.SUB | UserNoticeType.RESUB, Login(name, _)), channel, _) =>
+      val message = s"Thank you ${name.unwrap} for subscribing!"
+      streamOutgoing(None, channel, message)
 
-      case _ => ZStream.empty
-    }
+    case _ => ZStream.empty
   }
 
 val input: List[WebSocketFrame] =
@@ -114,14 +112,14 @@ object Tests extends ZIOSpecDefault:
     ref =>
       ZLayer.make[TwitchChat](
         TwitchChat.layer,
-        ReadAccessInfo.mockLayer(info),
+        AuthenticationStore.mockLayer(info),
         HttpClient.mockLayer(input, ref, mockReq))
 
   val spec = suite("tests") {
     test("responds to bits") {
       for
         ref    <- Ref.make[List[WebSocketFrame]](Nil)
-        _      <- runChat.provide(mockEnv(ref))
+        _      <- TwitchChat.process(processChat).provide(mockEnv(ref))
         output <- ref.get
       yield assert(output)(Assertion.equalTo(expected))
     }

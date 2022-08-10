@@ -14,7 +14,7 @@ import sttp.ws.WebSocketFrame.*
 
 import service.http_client.HttpClient
 import service.process_twitch_chat.*
-import service.read_access_info.ReadAccessInfo
+import service.authentication_store.AuthenticationStore
 
 import model.*
 import model.Auth.*
@@ -26,9 +26,9 @@ import common.*
 import type_classes.instances.semigroup.given
 import type_classes.instances.show.given
 
-val authStream: ZStream[ReadAccessInfo, Throwable, WebSocketFrame] =
+val authStream: ZStream[AuthenticationStore, Throwable, WebSocketFrame] =
   for
-    info <- ZStream.fromZIO(ReadAccessInfo.get)
+    info <- ZStream.fromZIO(AuthenticationStore.get)
 
     cap  = Auth.CAP_REQ(Capabilities.membership |+| Capabilities.tags |+| Capabilities.commands)
     pass = Auth.PASS(info.accessToken)
@@ -57,9 +57,9 @@ def processFrames(f: ProcessIncoming): Pipe[WebSocketFrame, WebSocketFrame] =
     case other                        => printIgnore(other)
   }
 
-def makeChatter(f: ProcessIncoming): RIO[HttpClient & ReadAccessInfo, Response[Either[String, Unit]]] =
+def makeChatter(f: ProcessIncoming): RIO[HttpClient & AuthenticationStore, Response[Either[String, Unit]]] =
   for
-    info <- ZIO.environment[ReadAccessInfo]
+    info <- ZIO.environment[AuthenticationStore]
     auth = authStream.provideEnvironment(info)
     response <- HttpClient.websocket(
       uri = uri"ws://irc-ws.chat.twitch.tv:80", // TODO: Switch to secure URI
