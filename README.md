@@ -17,11 +17,11 @@ are required:
 
 ```scala
 case class Credentials(
-                        accessToken: AccessToken,
-                        refreshToken: RefreshToken,
-                        clientId: String,
-                        clientSecret: String,
-                        channels: JoinChannels)
+    accessToken: AccessToken,
+    refreshToken: RefreshToken,
+    clientId: String,
+    clientSecret: String,
+    channels: JoinChannels)
 ```
 
 The access token, refresh token, client id and client secret can be obtained by
@@ -122,16 +122,112 @@ enum Outgoing:
 ```
 
 #### Notes
-* Multiple outgoing events can be emitted as response to an incoming event by returning a stream of more that one element.
-* Any effect can be evaluated while processing
-* No outgoing events can be emitted as response to an incoming by returning an empty stream
-
-### Interpreting Tags
-
-TODO
+* Multiple outgoing events can be emitted as response to an incoming event by returning a stream of more than one element.
+* Any effect can be evaluated while processing.
+* No outgoing events can be emitted as response to an incoming event by returning an empty stream.
 
 ### Wrapper Types
 
-TODO
+Most types are wrapped with opaque types to enable type safety and specific functionality. A type can be wrapped using
+its companion object's apply method and can be unwrapped using an instance of the `Unwrap` type class. The `Unwrap` type class
+can also be used to wrap values in an equivalent way to the apply method.
+
+```scala
+trait Unwrap[A, T]:
+  def unwrap(a: A): T
+  def wrap(t: T): A
+```
+
+A string representation of a wrapped type can be obtained by bringing an instance of show into scope.
+
+```scala
+import type_classes.instances.show.given
+```
+
+### Tags
+
+Most messages sent by the Twitch IRC server are accompanied by a number of tags that relay useful information about the 
+event. Each type of tags has its own accompanying methods for accessing some specific information.
+
+```scala
+// for example
+extension (privmsgTags: PrivmsgTags)
+    def getBits: Option[Int]     = ???
+    def getId: Option[MessageId] = ???
+
+extension (userNoticeTags: UserNoticeTags)
+    def getType: Option[UserNoticeType] = ???
+    def getLogin: Option[PlainUser]     = ???
+
+extension (noticeTags: NoticeTags)
+    def getType: Option[NoticeType] = ???
+```
+
+### Extracting values from tags using pattern matching
+
+A more expressive way to handle tags is enabled through `Extract`.
+
+```scala
+// Simplified
+case class Extract[T, A](key: String, f: String => Option[A])(using U: Unwrap[T, Map[String, String]]):
+    def unapply(tags: T): Option[(A, T)] = ???
+```
+
+Extract provides and unapply method that should match a specific tag and return the rest of the tags.
+To illustrate its usage, consider the following use case:
+
+A `USERNOTICE` event contains most of its useful information withing its tags. It is emitted in a number of cases, like a user
+subscribing, resubscribing, gifting a sub etc. Information about the cause and the user who triggered it is contained 
+within the tags which are represented internally as a hashmap. 
+
+An Extract instance for the event type can be defined as:
+```scala
+enum UserNoticeType:
+  case SUB
+  case RESUB
+  case SUBGIFT
+  case GIFT_PAID_UPGRADE
+  case REWARD_GIFT
+  case ANON_GIFT_PAID_UPGRADE
+  case RAID
+  case UNRAID
+  case RITUAL
+  case BITS_BADGE_TIER
+
+val strToUserNoticeType: String => Option[UserNoticeType] = {
+  case "sub"                 => Some(UserNoticeType.SUB)
+  case "resub"               => Some(UserNoticeType.RESUB)
+  case "subgift"             => Some(UserNoticeType.SUBGIFT)
+  case "giftpaidupgrade"     => Some(UserNoticeType.GIFT_PAID_UPGRADE)
+  case "rewardgift"          => Some(UserNoticeType.REWARD_GIFT)
+  case "anongiftpaidupgrade" => Some(UserNoticeType.ANON_GIFT_PAID_UPGRADE)
+  case "raid"                => Some(UserNoticeType.RAID)
+  case "unraid"              => Some(UserNoticeType.UNRAID)
+  case "ritual"              => Some(UserNoticeType.RITUAL)
+  case "bitsbadgetier"       => Some(UserNoticeType.BITS_BADGE_TIER)
+  case _                     => None
+}
+
+val Type = Extract[UserNoticeTags, UserNoticeType]("msg-id", strToUserNoticeType)
+```
+
+and for the username as:
+```scala
+val Login = Extract[UserNoticeTags, String]("login", x => Some(x))
+```
+
+Having defined those, a pattern match case can be defined for every `USERNOTICE` event which was triggered by a subscription
+or a re-subscription, which sends back a personalized message:
+```scala
+case Incoming.USERNOTICE(Type(UserNoticeType.SUB | UserNoticeType.RESUB, Login(name, _)), channel, _) =>
+  ZStream(Outgoing.PRIVMSG(replyTo, channel, Message(s"Thank you $name for subscribing!")))
+```
+Notice how the `Type` pattern extracts the event type and matches with only two of the 10 possible values. The rest of the tags are returned
+on the second value of the pattern and are then again matched with the Login pattern which extracts the login name of the user, which
+is also contained withing the tags. Finally, the rest of the tags are ignored.
+
+*Note that the presence of these tags is not guaranteed by the Twitch IRC server*
+
+
 
 ### Testing
