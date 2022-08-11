@@ -2,7 +2,7 @@
 
 TwitZ is a Scala 3, ZIO 2 based twitch library which interfaces with the Twitch IRC API. It can be used to create
 bots/chatbots which respond to events emitted by twitch. This library should mirror the Twitch IRC API specification as
-documented here: https://dev.twitch.tv/docs/irc
+documented here: https://dev.twitch.tv/docs/irc, and its understanding is assumed through the rest of this README.
 
 ### Dependencies
 
@@ -28,7 +28,7 @@ The access token, refresh token, client id and client secret can be obtained by
 following: https://dev.twitch.tv/docs/authentication.
 This information will be used to initially authenticate with twitch, afterwards, the tokens will be automatically
 refreshed whenever they expire.
-The `channels` provided are the channels that are going to be observed for events
+The `channels` argument refer to the channels that are going to be observed for events.
 
 * A layer of the `LocalStorage` service.
 
@@ -45,7 +45,7 @@ shutdown/restart. It requires a base path and a layer of ZIO `Scope`.
 HttpClient.layer
 ```
 
-The HttpClient requires a layer of `https://dev.twitch.tv/docs/authentication`
+The HttpClient requires a layer of `HttpClientZioBackend`
 
 #### Example of creating an `AuthenticationStore`
 
@@ -88,6 +88,18 @@ The `TwitchChat` service expects a function from a `Stream` of `Incoming` events
 ```scala
 trait TwitchChat:
   def process(f: Stream[Throwable, Incoming] => Stream[Throwable, Outgoing]): Task[Response[Either[String, Unit]]]
+```
+
+A layer of `HttpClient` and `AuthenticationStore` are required to crreate a layer of `TwitchChat`.
+
+```scala
+  ZLayer.make[TwitchChat](
+  TwitchChat.layer,
+  HttpClient.layer,
+  AuthenticationStore.layer(info),
+  LocalStorage.layer(Paths.get("./tmp/")),
+  Scope.default,
+  HttpClientZioBackend.layer())
 ```
 
 #### Incoming Events
@@ -173,12 +185,15 @@ case class Extract[T, A](key: String, f: String => Option[A])(using U: Unwrap[T,
     def unapply(tags: T): Option[(A, T)] = ???
 ```
 
-Extract provides and unapply method that should match a specific tag and return the rest of the tags.
+Extract provides and unapply method that will match, and extract the value of, a specific tag and return the rest of the tags.
+Tags are represented internally as a hashmap, thus the first constructor parameter specifies the key of the tag. The second
+parameter is used to transform the value of the tag to some other type.
+
 To illustrate its usage, consider the following use case:
 
 A `USERNOTICE` event contains most of its useful information withing its tags. It is emitted in a number of cases, like a user
 subscribing, resubscribing, gifting a sub etc. Information about the cause and the user who triggered it is contained 
-within the tags which are represented internally as a hashmap. 
+within the tags. 
 
 An Extract instance for the event type can be defined as:
 ```scala
