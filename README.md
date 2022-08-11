@@ -159,7 +159,8 @@ import type_classes.instances.show.given
 ### Tags
 
 Most messages sent by the Twitch IRC server are accompanied by a number of tags that relay useful information about the 
-event. Each type of tags has its own accompanying methods for accessing some specific information.
+event. Each type of tags has its own accompanying methods for accessing some specific information. 
+*Note that the presence of specific tags is not guaranteed by the Twitch IRC server*
 
 ```scala
 // for example
@@ -185,8 +186,8 @@ case class Extract[T, A](key: String, f: String => Option[A])(using U: Unwrap[T,
     def unapply(tags: T): Option[(A, T)] = ???
 ```
 
-Extract provides and unapply method that will match, and extract the value of, a specific tag and return the rest of the tags.
-Tags are represented internally as a hashmap, thus the first constructor parameter specifies the key of the tag. The second
+Extract provides an unapply method that will match, and extract the value of, a specific tag and return the rest of the tags.
+Tags are represented internally as a hashmap, thus, the first constructor argument specifies the key (name) of the tag. The second
 parameter is used to transform the value of the tag to some other type.
 
 To illustrate its usage, consider the following use case:
@@ -231,18 +232,15 @@ and for the username as:
 val Login = Extract[UserNoticeTags, String]("login", x => Some(x))
 ```
 
-Having defined those, a pattern match case can be defined for every `USERNOTICE` event which was triggered by a subscription
-or a re-subscription, which sends back a personalized message:
+Having defined those, a match case can be defined for every `USERNOTICE` event which was triggered by a subscription
+or a re-subscription, which sends back a personalized message in the chat of the channel:
 ```scala
 case Incoming.USERNOTICE(Type(UserNoticeType.SUB | UserNoticeType.RESUB, Login(name, _)), channel, _) =>
-  ZStream(Outgoing.PRIVMSG(replyTo, channel, Message(s"Thank you $name for subscribing!")))
+  ZStream(Outgoing.PRIVMSG(None, channel, Message(s"Thank you $name for subscribing!")))
 ```
 Notice how the `Type` pattern extracts the event type and matches with only two of the 10 possible values. The rest of the tags are returned
-on the second value of the pattern and are then again matched with the Login pattern which extracts the login name of the user, which
+on the second value of the pattern and are then matched with the Login pattern which extracts the login name of the user which
 is also contained withing the tags. Finally, the rest of the tags are ignored.
-
-*Note that the presence of these tags is not guaranteed by the Twitch IRC server*
-
 
 
 ### Testing
