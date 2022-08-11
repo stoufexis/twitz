@@ -240,7 +240,13 @@ case Incoming.USERNOTICE(Type(UserNoticeType.SUB | UserNoticeType.RESUB, Login(n
 ```
 Notice how the `Type` pattern extracts the event type and matches with only two of the 10 possible values. The rest of the tags are returned
 on the second value of the pattern and are then matched with the Login pattern which extracts the login name of the user which
-is also contained withing the tags. Finally, the rest of the tags are ignored.
+is also contained withing the tags. Finally, the rest of the tags are ignored. These Extract instances along with a few others
+are already defined and can be imported as follows:
 
+```scala
+import model.*
+```
 
 ### Testing
+
+TODO
