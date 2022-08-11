@@ -17,11 +17,11 @@ are required:
 
 ```scala
 case class Credentials(
-    accessToken: AccessToken,
-    refreshToken: RefreshToken,
-    clientId: String,
-    clientSecret: String,
-    channels: JoinChannels)
+                        accessToken: AccessToken,
+                        refreshToken: RefreshToken,
+                        clientId: String,
+                        clientSecret: String,
+                        channels: JoinChannels)
 ```
 
 The access token, refresh token, client id and client secret can be obtained by
@@ -81,13 +81,50 @@ val auth =
 
 ```
 
-### Incoming Events
+### Processing Events
 
-TODO
+The `TwitchChat` service expects a function from a `Stream` of `Incoming` events to a `Stream` of `Outgoing` events.
 
-### Outgoing Events
+```scala
+trait TwitchChat:
+  def process(f: Stream[Throwable, Incoming] => Stream[Throwable, Outgoing]): Task[Response[Either[String, Unit]]]
+```
 
-TODO
+#### Incoming Events
+Incoming events model events sent by the Twitch IRC server. *(see: https://dev.twitch.tv/docs/irc for reference)*
+
+```scala
+enum Incoming:
+  case PING(body: String)
+  case PRIVMSG(tags: PrivmsgTags, from: FullUser, channel: Channel, message: Message)
+  case ROOMSTATE(tags: RoomStateTags, channel: Channel)
+  case GLOBALUSERSTATE(tags: GlobalUserStateTags)
+  case CLEARMSG(tags: ClearMsgTags, channel: Channel, message: Message)
+  case CLEARCHAT(tags: ClearChatTags, channel: Channel, user: Option[BodyUser])
+  case HOSTTARGET(hostingChannel: Channel, channel: BodyChannel, viewers: Viewers)
+  case NOTICE(tags: NoticeTags, channel: Channel, message: Message)
+  case USERNOTICE(tags: UserNoticeTags, channel: Channel, message: Option[Message])
+  case USERSTATE(tags: UserStateTags, channel: Channel)
+  case WHISPER(tags: WhisperTags, to: BodyUser, from: PlainUser, message: Message)
+  case JOIN(from: FullUser, message: Channel)
+  case PART(from: FullUser, message: Channel)
+```
+
+#### Outgoing Events
+Outgoing events model events that can be sent to the Twitch IRC server. *(see: https://dev.twitch.tv/docs/irc for reference)*
+
+```scala
+enum Outgoing:
+  case PRIVMSG(replyTo: Option[MessageId], channel: Channel, body: Message)
+  case PONG(body: String)
+  case NICK(channel: JoinChannels)
+  case JOIN(channel: JoinChannels)
+```
+
+#### Notes
+* Multiple outgoing events can be emitted as response to an incoming event by returning a stream of more that one element.
+* Any effect can be evaluated while processing
+* No outgoing events can be emitted as response to an incoming by returning an empty stream
 
 ### Interpreting Tags
 
