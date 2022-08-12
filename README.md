@@ -249,4 +249,12 @@ import model.*
 
 ### Testing
 
-TODO
+Mock layers for testing are provided for:
+* The `AuthenticationStore` service
+* The `LocalStorage` service
+* The `HttpClient` service
+
+See `src/test/` for examples
+
+### Examples
+Full examples can be found on the `src/examples/` directory
