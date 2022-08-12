@@ -11,11 +11,11 @@ import sttp.ws.WebSocketFrame
 
 import scala.collection.immutable.HashMap
 
+import service.authentication_store.AuthenticationStore
 import service.http_client.HttpClient
 import service.http_client.HttpClient.*
 import service.local_storage.LocalStorage
 import service.process_twitch_chat.TwitchChat
-import service.authentication_store.AuthenticationStore
 
 import model.*
 import model.AuxTypes.*
@@ -55,18 +55,8 @@ val runChat: RIO[TwitchChat, Response[Either[String, Unit]]] =
         ZStream(Message(s"Thank you ${name.unwrap} for subscribing!"))
           .map(Outgoing.PRIVMSG(None, channel, _))
 
-      case Incoming.PING(body)                                   => ZStream(Outgoing.PONG(body))
-      case Incoming.USERNOTICE(tags, channel, message)           => ZStream.empty
-      case Incoming.ROOMSTATE(tags, channel)                     => ZStream.empty
-      case Incoming.GLOBALUSERSTATE(tags)                        => ZStream.empty
-      case Incoming.CLEARMSG(tags, channel, message)             => ZStream.empty
-      case Incoming.CLEARCHAT(tags, channel, user)               => ZStream.empty
-      case Incoming.HOSTTARGET(hostingChannel, channel, viewers) => ZStream.empty
-      case Incoming.NOTICE(tags, channel, message)               => ZStream.empty
-      case Incoming.USERSTATE(tags, channel)                     => ZStream.empty
-      case Incoming.WHISPER(tags, to, from, message)             => ZStream.empty
-      case Incoming.JOIN(from, message)                          => ZStream.empty
-      case Incoming.PART(from, message)                          => ZStream.empty
+      case Incoming.PING(body) => ZStream(Outgoing.PONG(body))
+      case _                   => ZStream.empty
     }
   }
 
